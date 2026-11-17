@@ -1,10 +1,107 @@
-import{getBounties,getBounty,getLeaderboard,getAccount}from'./api.js';import{esc,money,date,left,val}from'./format.js';
-const app=document.querySelector('#app');const arr=x=>Array.isArray(x)?x:(x?.items||x?.data||x?.entries||x?.results||[]);const img=x=>x?`<img crossorigin="anonymous" src="${esc(x)}" alt="">`:'';
-function nav(){return `<div class="crumb"><a href="#/">← All bounties</a></div>`}
-function board(d){const bs=arr(d);return `<section class="hero"><div><p class="eyebrow">THE OPEN BUILD NETWORK</p><h1>Build something<br><em>people remember.</em></h1><p class="lede">Live challenges, real rewards, and a community that ships in public.</p></div><div class="hero-stat"><b>${bs.length||'—'}</b><span>live bounties</span></div></section><div class="section-head"><div><p class="eyebrow">DISCOVER</p><h2>Open bounties</h2></div><span class="muted">Updated just now</span></div><div class="cards">${bs.map(card).join('')||'<div class="empty">No open bounties right now.</div>'}</div>`}
-function card(b){const slug=val(b,'slug','id')||'';const title=val(b,'title','name')||'Untitled bounty';const pot=val(b,'potUsd','livePotUsd','rewardAmount','reward');const entries=val(b,'submissionCount','entriesCount','entryCount')??arr(b.entries).length;return `<a class="card" href="#/bounty/${encodeURIComponent(slug)}"><div class="card-top"><span class="pill"><i></i> OPEN</span><span class="time">${left(val(b,'deadline','endsAt'))}</span></div><h3>${esc(title)}</h3><p>${esc(val(b,'summary','description')||'A new make.fun challenge is waiting for your best work.')}</p><div class="card-foot"><div><small>LIVE POT</small><strong>${money(pot)}</strong></div><div><small>ENTRY FEE</small><strong>${val(b,'entryFeeUsd','entryFee')?money(val(b,'entryFeeUsd','entryFee')):'Free'}</strong></div><div><small>ENTRIES</small><strong>${entries}</strong></div></div></a>`}
-function bounty(b,slug){const title=val(b,'title','name')||slug;const rules=val(b,'rules','requirements')||[];const rewards=arr(val(b,'rewards','prizes'));return `${nav()}<section class="detail-head"><div><span class="pill"><i></i> LIVE BOUNTY</span><h1>${esc(title)}</h1><p class="lede">${esc(val(b,'summary','tagline')||'Build in public. Compete for a share of the pot.')}</p></div><div class="big-pot"><small>LIVE POT</small><b>${money(val(b,'potUsd','livePotUsd','rewardAmount','reward'))}</b><span>${left(val(b,'deadline','endsAt'))}</span></div></section><div class="tabs"><a class="active" href="#/bounty/${encodeURIComponent(slug)}">Overview</a><a href="#/bounty/${encodeURIComponent(slug)}/leaderboard">Leaderboard</a></div><div class="detail-grid"><article><h2>About this bounty</h2><div class="prose">${esc(val(b,'description','details')||'This bounty is open to builders everywhere. Explore the brief, make something useful, and submit your work before the deadline.')}</div>${rules.length?`<h2>Rules</h2><ul class="rules">${(Array.isArray(rules)?rules:[rules]).map(x=>`<li>${esc(typeof x==='string'?x:val(x,'text','description'))}</li>`).join('')}</ul>`:''}</article><aside class="panel"><h3>At a glance</h3><dl><dt>Deadline</dt><dd>${date(val(b,'deadline','endsAt'))}<br><span>${left(val(b,'deadline','endsAt'))}</span></dd><dt>Entries</dt><dd>${val(b,'submissionCount','entriesCount')??'—'}</dd><dt>Entry fee</dt><dd>${val(b,'entryFeeUsd','entryFee')?money(val(b,'entryFeeUsd','entryFee')):'Free'}</dd></dl><a class="button" href="#/bounty/${encodeURIComponent(slug)}/leaderboard">View leaderboard →</a></aside></div>${rewards.length?`<section class="rewards"><h2>Rewards</h2><div class="reward-table"><div class="th"><span>PLACE</span><span>REWARD</span></div>${rewards.map((r,i)=>`<div><b>${val(r,'place','rank')??i+1}</b><strong>${money(val(r,'amountUsd','amount','reward'))}</strong></div>`).join('')}</div></section>`:''}`}
-function leaderboard(d,slug){const rows=arr(d?.leaderboard||d);return `${nav()}<div class="section-head"><div><p class="eyebrow">COMPETITION RESULTS</p><h1>Leaderboard</h1></div><a class="button ghost" href="#/bounty/${encodeURIComponent(slug)}">Bounty overview</a></div><div class="leaderboard"><div class="lb-head"><span>RANK</span><span>BUILDER</span><span>SCORE</span><span>RESULT</span></div>${rows.map((r,i)=>{const u=r.account||r.user||r.author||r;const handle=val(u,'handle','username','name')||'Anonymous builder';return `<div class="lb-row"><b class="rank">${val(r,'rank','place')??i+1}</b><span class="builder">${img(val(u,'avatarUrl','avatar','image'))}<span>${esc(handle)}<small>${esc(val(r,'entryTitle','title')||'Submitted entry')}</small></span></span><strong>${val(r,'score','points','rating')??'—'}</strong><span class="result">${esc(val(r,'status','result')||'In review')}</span></div>`}).join('')||'<div class="empty">Leaderboard data will appear as entries are scored.</div>'}</div>`}
-function profile(d,id){const u=d.account||d.user||d;const name=val(u,'name','displayName','handle')||id;const entries=arr(val(d,'entries','submissions'));const results=arr(val(d,'results','wins'));return `${nav()}<section class="profile"><div class="avatar">${(String(name)[0]||'?').toUpperCase()}</div><p class="eyebrow">PUBLIC PROFILE</p><h1>${esc(name)}</h1><p class="muted">@${esc(val(u,'handle','username')||id)}</p><div class="profile-stats"><div><b>${entries.length}</b><span>entries</span></div><div><b>${results.length}</b><span>results</span></div><div><b>${val(u,'reputation','score')??'—'}</b><span>reputation</span></div></div></section><section class="profile-list"><h2>Recent work</h2>${entries.map(e=>`<div class="work"><b>${esc(val(e,'title','name')||'Untitled entry')}</b><span>${esc(val(e,'status','result')||'Submitted')}</span></div>`).join('')||'<div class="empty">No public entries yet.</div>'}</section>`}
-async function render(){window.__shotReady=false;app.innerHTML='<div class="loading">Loading live data…</div>';const p=location.hash.replace(/^#\/?/,'').split('/').filter(Boolean);try{if(!p.length){document.title='make.fun — open bounties';app.innerHTML=board(await getBounties())}else if(p[0]==='bounty'){const slug=decodeURIComponent(p[1]||'');const d=p[2]==='leaderboard'?await getLeaderboard(slug):await getBounty(slug);document.title=`${val(d,'title','name')||'Bounty'} · make.fun`;app.innerHTML=p[2]==='leaderboard'?leaderboard(d,slug):bounty(d,slug)}else if(p[0]==='account'){const id=decodeURIComponent(p[1]||'');app.innerHTML=profile(await getAccount(id),id)}else app.innerHTML=board(await getBounties())}catch(e){app.innerHTML=`<div class="error"><h2>Couldn’t load this view</h2><p>The public API may be briefly unavailable.</p><a class="button" href="#/">Try again</a></div>`}window.scrollTo(0,0);window.__shotReady=true}
-addEventListener('hashchange',render);render();
+// main.js — hash router + the four view renderers.
+// Routes:
+//   #/                              bounty board
+//   #/bounty/<slug>                 one bounty
+//   #/bounty/<slug>/leaderboard     that bounty's leaderboard
+//   #/account/<id>                  an account's public profile
+//
+// render() sets window.__shotReady = false when a route starts loading
+// and true once its data has rendered (screenshot scripts wait on it).
+
+import { getBounties, getBounty, getLeaderboard, getAccount } from "./api.js";
+import { boardView, bountyView, leaderboardView, profileView } from "./views.js";
+import { esc } from "./format.js";
+
+const app = document.getElementById("app");
+const pill = document.getElementById("api-status");
+
+function setStatus(text, ok) {
+  if (!pill) return;
+  pill.textContent = text;
+  pill.classList.toggle("ok", !!ok);
+  pill.classList.toggle("bad", !ok);
+}
+
+function loadingView(what) {
+  return `<p class="loading" role="status">Loading ${esc(what)}…</p>`;
+}
+
+function errorView(message, homeLink = true) {
+  return `<div class="error">
+    <h2>Something went wrong</h2>
+    <p>${esc(message)}</p>
+    ${homeLink ? `<p><a class="btn" href="#/">Back to bounties</a></p>` : ""}
+  </div>`;
+}
+
+function parseRoute() {
+  const hash = window.location.hash || "#/";
+  const path = hash.replace(/^#/, "") || "/";
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length === 0) return { name: "board" };
+  if (parts[0] === "bounty" && parts[1] && parts[2] === "leaderboard") {
+    return { name: "leaderboard", slug: decodeURIComponent(parts[1]) };
+  }
+  if (parts[0] === "bounty" && parts[1]) {
+    return { name: "bounty", slug: decodeURIComponent(parts[1]) };
+  }
+  if (parts[0] === "account" && parts[1]) {
+    return { name: "account", id: decodeURIComponent(parts[1]) };
+  }
+  return { name: "board" };
+}
+
+async function renderBoard() {
+  app.innerHTML = loadingView("bounties");
+  const bounties = await getBounties();
+  setStatus("Live API", true);
+  app.innerHTML = boardView(bounties);
+}
+
+async function renderBounty(slug) {
+  app.innerHTML = loadingView("bounty");
+  const bounty = await getBounty(slug);
+  setStatus("Live API", true);
+  app.innerHTML = bountyView(bounty);
+  document.title = `${bounty.title ?? slug} — make.fun`;
+}
+
+async function renderLeaderboard(slug) {
+  app.innerHTML = loadingView("leaderboard");
+  const lb = await getLeaderboard(slug);
+  const title = lb.title || lb.competition?.title || slug;
+  setStatus("Live API", true);
+  app.innerHTML = leaderboardView(slug, title, lb);
+  document.title = `Leaderboard: ${title} — make.fun`;
+}
+
+async function renderAccount(id) {
+  app.innerHTML = loadingView("profile");
+  const account = await getAccount(id);
+  setStatus("Live API", true);
+  app.innerHTML = profileView(account);
+  const name = account.display_name ?? account.handle ?? id;
+  document.title = `${name} — make.fun`;
+}
+
+async function render() {
+  window.__shotReady = false;
+  document.title = "make.fun — open bounties";
+  const route = parseRoute();
+  try {
+    if (route.name === "bounty") await renderBounty(route.slug);
+    else if (route.name === "leaderboard") await renderLeaderboard(route.slug);
+    else if (route.name === "account") await renderAccount(route.id);
+    else await renderBoard();
+  } catch (err) {
+    console.error(err);
+    setStatus("API error", false);
+    app.innerHTML = errorView(err?.message ?? "Could not load data from make.fun.");
+  } finally {
+    window.__shotReady = true;
+    window.scrollTo(0, 0);
+  }
+}
+
+window.addEventListener("hashchange", render);
+render();
